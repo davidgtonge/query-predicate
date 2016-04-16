@@ -212,25 +212,16 @@ performQuery = (type, value, attr, model, getter) ->
 # This function should accept an obj like this:
 # $and: [queries], $or: [queries]
 # should return false if fails
-single = (queries, getter, isScore) ->
+single = (queries, getter) ->
   getter = parseGetter(getter) if getter
+  (model) ->
+    for queryObj in queries
+      # Early false return if any of the queries fail
+      return false unless performQuerySingle(queryObj.type, queryObj.parsedQuery, getter, model)
+    # All queries passes, so return true
+    true
 
-  if isScore
-    throw new Error("score operations currently don't work on compound queries") unless queries.length is 1
-    queryObj = queries[0]
-    throw new Error("score operations only work on $and queries (not #{queryObj.type}") unless queryObj.type is "$and"
-    (model) ->
-      model._score = performQuerySingle(queryObj.type, queryObj.parsedQuery, getter, model, true)
-      model
-  else
-    (model) ->
-      for queryObj in queries
-        # Early false return if any of the queries fail
-        return false unless performQuerySingle(queryObj.type, queryObj.parsedQuery, getter, model, isScore)
-      # All queries passes, so return true
-      true
-
-performQuerySingle = (type, query, getter, model, isScore) ->
+performQuerySingle = (type, query, getter, model) ->
   passes = 0
   score = 0
   scoreInc = 1 / query.length
@@ -247,17 +238,15 @@ performQuerySingle = (type, query, getter, model, isScore) ->
     # If the attribute test is true, perform the query
     if test
       if q.parsedQuery #nested queries
-        test = single([q], getter, isScore)(model)
+        test = single([q], getter)(model)
       else test = performQuery q.type, q.value, attr, model, getter
     if test
       passes++
-      if isScore
-        boost = q.boost ? 1
-        score += (scoreInc * boost)
+
     switch type
       when "$and"
         # Early false return for $and queries when any test fails
-        return false unless isScore or test
+        return false unless test
       when "$not"
         # Early false return for $not queries when any test passes
         return false if test
@@ -270,10 +259,8 @@ performQuerySingle = (type, query, getter, model, isScore) ->
       else
         throw new Error("Invalid compound method")
 
-  if isScore
-    score
   # For not queries, check that all tests have failed
-  else if type is "$not"
+  if type is "$not"
     passes is 0
   # $or queries have failed as no tests have passed
   # $and queries have passed as no tests failed
@@ -313,12 +300,12 @@ parseQuery = (query) ->
 parseGetter = (getter) ->
   return if typeof getter is 'string' then (obj, key) -> obj[getter](key) else getter
 
-runQuery = (items, query, getter, first, isScore) ->
+runQuery = (items, query, getter, first) ->
   if arguments.length < 2
     # If no arguments or only the items are provided, then use the buildQuery interface
     return buildQuery.apply this, arguments
   if getter then getter = parseGetter(getter)
-  query = single(parseQuery(query), getter, isScore) unless (utils.getType(query) is "Function")
+  query = single(parseQuery(query), getter) unless (utils.getType(query) is "Function")
 
   if first
     fn = utils.find
