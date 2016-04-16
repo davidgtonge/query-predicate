@@ -1,35 +1,29 @@
 {
   "name": "underscore-query",
-  "description": "Lightweight Query API library for Underscore and Lodash",
-  "version": "2.1.0",
+  "description": "Query Predicate Generator using Mongo Query Language",
+  "version": "3.0.0",
   "author": "Dave Tonge <dave.tonge@momentumft.co.uk> (https://github.com/davidgtonge)",
   "tags": [
-    "underscore",
     "mongo",
-    "ES5",
-    "lodash",
-    "elasticsearch",
-    "score",
-    "boost",
+    "ramda",
+    "predicate",
     "query"
   ],
-  "main": "./lib/underscore-query",
+  "main": "./lib/query-predicate",
   "repository": {
     "type": "git",
-    "url": "https://github.com/davidgtonge/underscore-query.git"
+    "url": "https://github.com/davidgtonge/query-predicate.git"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ramda": "^0.21.0"
+  },
   "devDependencies": {
     "coffee-script": ">=1.7.x",
     "mocha": "",
-    "backbone": "",
-    "uglify-js": "",
-    "handlebars": "",
-    "lodash": "3.x",
-    "underscore": ">=1.6.x"
+    "underscore": "^1.8.3"
   },
   "scripts": {
     "test": "mocha",
-    "build": "cake build"
+    "build": "coffee -o lib/ -c src/"
   }
 }

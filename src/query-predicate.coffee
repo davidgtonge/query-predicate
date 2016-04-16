@@ -8,33 +8,28 @@ The aim of the project is to provide a simple, well tested, way of filtering dat
 ###
 
 root = this
+R = require "ramda"
 
 ### UTILS ###
-utils = {}
-
-# We assign local references to the underscore methods used.
-# If underscore is not supplied we use the above ES5 methods
-createUtils = (_) ->
-  for key in ["every", "some", "filter", "first", "find", "reject", "reduce", "property",
-      "intersection", "isEqual", "keys", "isArray", "result", "map", "includes", "isNaN"]
-    utils[key] = _[key]
-    throw new Error("#{key} missing. Please ensure that you first initialize
-      underscore-query with either lodash or underscore") unless utils[key]
-  return
-
+utils =
+  isArray: Array.isArray
+  keys: Object.keys
+  isEqual: R.equals
+  find: R.find
+  filter: R.filter
+  first: R.head
+  map: R.map
+  reduce: R.reduce
+  intersection: R.intersection
+  includes: R.contains
+  isNaN: Number.isNaN
+  makeObj: R.objOf
+  reverseString: R.compose(R.toLower, R.reverse)
 
 # Returns a string denoting the type of object
 utils.getType =  (obj) ->
   type = Object.prototype.toString.call(obj).substr(8)
   type.substr(0, (type.length - 1))
-
-# Utility Function to turn 2 values into an object
-utils.makeObj = (key, val)->
-  (o = {})[key] = val
-  o
-
-# Reverses a string
-utils.reverseString = (str) -> str.toLowerCase().split("").reverse().join("")
 
 # An array of the compound modifers that can be used in queries
 utils.compoundKeys = ["$and", "$not", "$or", "$nor"]
@@ -47,8 +42,13 @@ lookup = (keys, obj) ->
     # Add support for #21
     if utils.isArray(out)
       remainingKeys = keys.slice(idx)
-      out = utils.map(out, (v) -> lookup(remainingKeys, v))
-    else if out then out = utils.result(out,key)
+      mapFn = (v) -> lookup(remainingKeys, v)
+      out = utils.map mapFn, out
+    else if out
+      if utils.getType(out[key]) is "Function"
+        out = out[key]()
+      else
+        out = out[key]
     else break
   out
 
@@ -82,7 +82,7 @@ parseParamType = (query) ->
 
       when "Object"
       # If the key is one of the compound keys, then parse the param as a raw query
-        if utils.includes(utils.compoundKeys, key)
+        if utils.includes(key, utils.compoundKeys)
           o.type = key
           o.value = parseSubQuery queryParam, key
           o.key = null
@@ -117,7 +117,7 @@ parseParamType = (query) ->
         o.value = queryParam
 
     # For "$equal" queries with arrays or objects we need to perform a deep equal
-    if (o.type is "$equal") and (utils.includes(["Object", "Array"], paramType))
+    if (o.type is "$equal") and (utils.includes(paramType, ["Object", "Array"]))
       o.type = "$deepEqual"
     else if utils.isNaN(o.value)
       o.type = "$deepEqual"
@@ -145,7 +145,7 @@ parseSubQuery = (rawQuery, type) ->
       memo.concat parsed
 
   # Loop through all the different queries
-  utils.reduce(queryArray, iteratee, [])
+  utils.reduce(iteratee, [], queryArray)
 
 # Tests query value, to ensure that it is of the correct type
 testQueryValue = (queryType, value) ->
@@ -165,7 +165,7 @@ testModelAttribute = (queryType, value) ->
   switch queryType
     when "$like", "$likeI", "$regex", "$startsWith", "$endsWith"  then valueType is "String"
     when "$contains", "$all", "$any", "$elemMatch" then valueType is "Array"
-    when "$size"                      then utils.includes(["String","Array"], valueType)
+    when "$size"                      then utils.includes(valueType, ["String","Array"])
     when "$in", "$nin"                then value?
     else true
 
@@ -184,9 +184,9 @@ performQuery = (type, value, attr, model, getter) ->
   switch type
     when "$equal"
       # If the attribute is an array then search for the query value in the array the same as Mongo
-      if utils.isArray(attr) then utils.includes(attr, value) else (attr is value)
+      if utils.isArray(attr) then utils.includes(value, attr) else (attr is value)
     when "$deepEqual"       then utils.isEqual(attr, value)
-    when "$contains"        then utils.includes(attr, value)
+    when "$contains"        then utils.includes(value, attr)
     when "$ne"              then attr isnt value
     when "$lt"              then value? and attr < value
     when "$gt"              then value? and attr > value
@@ -194,10 +194,10 @@ performQuery = (type, value, attr, model, getter) ->
     when "$gte"             then value? and attr >= value
     when "$between"         then value[0]? and value[1]? and value[0] < attr < value[1]
     when "$betweene"        then value[0]? and value[1]? and value[0] <= attr <= value[1]
-    when "$in"              then utils.includes(value, attr)
-    when "$nin"             then not utils.includes(value, attr)
-    when "$all"             then utils.every value, (item) -> utils.includes(attr, item)
-    when "$any"             then utils.some attr, (item) -> utils.includes(value, item)
+    when "$in"              then utils.includes(attr, value)
+    when "$nin"             then not utils.includes(attr, value)
+    when "$all"             then utils.intersection(value, attr).length is value.length
+    when "$any"             then utils.intersection(value, attr).length
     when "$size"            then attr.length is value
     when "$exists", "$has"  then attr? is value
     when "$like"            then attr.indexOf(value) isnt -1
@@ -290,7 +290,7 @@ parseQuery = (query) ->
   compoundQuery = utils.intersection utils.compoundKeys, queryKeys
 
   for type in compoundQuery
-    if not utils.isArray(query[type]) and utils.includes(utils.expectedArrayQueries, type)
+    if not utils.isArray(query[type]) and utils.includes(type, utils.expectedArrayQueries)
       throw new Error(type + ' query must be an array')
 
   # If no compound methods are found then use the "and" iterator
@@ -300,10 +300,10 @@ parseQuery = (query) ->
     # find if there is an implicit $and compundQuery operator
     if compoundQuery.length isnt queryKeys.length
       # Add the and compund query operator (with a sanity check that it doesn't exist)
-      if not utils.includes(compoundQuery, "$and")
+      if not utils.includes("$and", compoundQuery)
         query.$and = {}
         compoundQuery.unshift "$and"
-      for own key, val of query when not utils.includes(utils.compundKeys, key)
+      for own key, val of query when not utils.includes(key, utils.compundKeys)
         query.$and[key] = val
         delete query[key]
     (for type in compoundQuery
@@ -313,92 +313,19 @@ parseQuery = (query) ->
 parseGetter = (getter) ->
   return if typeof getter is 'string' then (obj, key) -> obj[getter](key) else getter
 
-class QueryBuilder
-  constructor: (@items, @_getter) ->
-    @theQuery = {}
-
-  all: (items, first) ->
-    if items then @items = items
-    if @indexes
-      items = @getIndexedItems(@items)
-    else
-      items = @items
-
-    runQuery(items, @theQuery, @_getter, first)
-
-  chain: -> _.chain(@all.apply(this, arguments))
-
-  tester: -> makeTest(@theQuery, @_getter)
-
-  first: (items) ->
-    @all(items, true)
-
-  getter: (@_getter) ->
-    this
-
-
-addToQuery = (type) ->
-  (params, qVal) ->
-    if qVal
-      params = utils.makeObj params, qVal
-    @theQuery[type] ?= []
-    @theQuery[type].push params
-    this
-
-for key in utils.compoundKeys
-  QueryBuilder::[key.substr(1)] = addToQuery(key)
-
-QueryBuilder::find = QueryBuilder::query = QueryBuilder::run = QueryBuilder::all
-
-# Build Query function for progamatically building up queries before running them.
-buildQuery = (items, getter) -> new QueryBuilder(items, getter)
-
-# Create a *test* function that checks if the object or objects match the query
-makeTest = (query, getter) -> single(parseQuery(query), parseGetter(getter))
-
-# Find one function that returns first matching result
-findOne = (items, query, getter) -> runQuery(items, query, getter, true)
-
-# The main function to be mxied into underscore that takes a collection and a raw query
 runQuery = (items, query, getter, first, isScore) ->
   if arguments.length < 2
     # If no arguments or only the items are provided, then use the buildQuery interface
     return buildQuery.apply this, arguments
   if getter then getter = parseGetter(getter)
   query = single(parseQuery(query), getter, isScore) unless (utils.getType(query) is "Function")
-  if isScore
-    fn = utils.map
-  else if first
+
+  if first
     fn = utils.find
   else
     fn = utils.filter
-  fn items, query
+  fn query, items
 
-score = (items, query, getter) ->
-  runQuery(items, query, getter, false, true)
 
-runQuery.build = buildQuery
-runQuery.parse = parseQuery
-runQuery.findOne = runQuery.first = findOne
-runQuery.score = score
-runQuery.tester = runQuery.testWith = makeTest
-runQuery.getter = runQuery.pluckWith = utils.makeGetter
 
-expose = (_, mixin = true) ->
-  createUtils(_)
-  if mixin then _.mixin {query:runQuery, q:runQuery}
-  runQuery
-
-# We now need to determine the environment that we are in
-
-# If no globals, then lets return the expose method, so users can explicitly pass in
-# their lodash or underscore reference
-if exports and module?.exports
-  # we're in node land
-  return module.exports = expose
-
-# underscore / lodash is exposed globally, so lets mixin for the user
-else if root._ then return expose(root._)
-
-# assuming we're in AMD land???
-return expose
+module.exports = (query) -> single(parseQuery(query))

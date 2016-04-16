@@ -2,10 +2,14 @@
 require "coffee-script"
 
 assert = require "assert"
-_ = require "underscore"
-require("../src/underscore-query")(_)
+R = require "ramda"
+createPredicate = require("../src/query-predicate")
+
+query = (list, queryObj) ->
+  R.filter(createPredicate(queryObj), list)
 
 suite = require "./suite"
 
-describe "Underscore Query Tests", ->
-  suite(_.query)
+describe "Query Predicate Tests", ->
+
+  suite(query)

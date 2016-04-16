@@ -14,7 +14,7 @@ _collection =  [
 
 create = -> _.clone(_collection)
 
-describe "Underscore Query Tests: Blanks", ->
+xdescribe "Underscore Query Tests: Blanks", ->
 
   it "handles null values", ->
 
@@ -55,5 +55,3 @@ describe "Underscore Query Tests: Blanks", ->
       attr is null or attr is `undefined` or attr is "" or (attr.length is 0)
     result = _.query a, blank: $blank
     assert.equal result.length, 5
-
-
