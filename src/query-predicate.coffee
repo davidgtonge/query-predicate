@@ -25,6 +25,7 @@ utils =
   isNaN: Number.isNaN
   makeObj: R.objOf
   reverseString: R.compose(R.toLower, R.reverse)
+  some: R.any
 
 # Returns a string denoting the type of object
 utils.getType =  (obj) ->
@@ -35,6 +36,11 @@ utils.getType =  (obj) ->
 utils.compoundKeys = ["$and", "$not", "$or", "$nor"]
 
 utils.expectedArrayQueries = ["$and", "$or", "$nor"]
+
+utils.equalsBy = (fn) ->
+  R.curry (a, b) ->
+    R.identical(a, fn(b))
+
 
 lookup = (keys, obj) ->
   out = obj
@@ -61,25 +67,91 @@ multipleConditions = (key, queries) ->
   (for type, val of queries
     utils.makeObj key, utils.makeObj(type, val))
 
+
+fnObject = R.curry (key, queryParam, out) ->
+  R.cond([
+    [
+      R.always(utils.includes(key, utils.compoundKeys)) #R.compose(R.contains(R.__, utils.compoundKeys), R.nthArg(2)),
+      R.merge(R.__, {
+        key:null,
+        value: parseSubQuery(queryParam, key)
+        type: key
+      })
+    ],
+    [
+      R.always(utils.keys(queryParam).length > 1) #R.compose(R.lt(1), R.length, R.keys)
+      R.merge(R.__, {
+        type: "$and"
+        value: parseSubQuery multipleConditions(queryParam, key)
+        key: null
+      })
+    ],
+    [
+      R.T,
+      R.tap(R.partial(console.log, ["here..."])) #R.merge(R.__, fn2(queryParam))
+    ]
+  ])(out)
+
+
+
+fn2 = (queryParam) ->
+  console.log("HERER!!!!")
+  o = {}
+  for own type, value of queryParam
+    # Before adding the query, its value is checked to make sure it is the right type
+    if testQueryValue type, value
+      o.type = type
+      switch type
+        when "$elemMatch" then o.value = single(parseQuery(value))
+        when "$endsWith" then o.value = utils.reverseString(value)
+        when "$likeI", "$startsWith" then o.value = value.toLowerCase()
+        when "$not", "$nor", "$or", "$and"
+          o.value = parseSubQuery utils.makeObj(o.key, value)
+          o.key = null
+        when "$computed"
+          o = utils.first parseParamType(utils.makeObj(key, value))
+          o.getter = utils.makeGetter(key)
+        else o.value = value
+      return o
+    else throw new Error("Query value (#{value}) doesn't match query type: (#{type})")
+
+
+
+
+fn23 = (key, queryParam) ->
+  paramType = utils.getType(queryParam)
+  out = R.pipe(
+    R.assoc("key", R.__, {type:"$equal", value: queryParam})
+    R.when(
+      R.always(key.indexOf(".") isnt -1)
+      R.assoc("getter", utils.makeGetter(key))
+    )
+  )(key)
+  a = R.cond([
+    [
+      R.compose(R.contains(R.__, ["RegExp", "Date"]), R.nthArg(1)),
+      R.assoc("type", "$#{paramType.toLowerCase()}")
+    ],
+    [
+      R.compose(R.equals("Object"), R.nthArg(1)),
+      fnObject(key, queryParam)
+    ],
+    [R.T, R.identity]
+  ])(out, paramType)
+  #console.log(a)
+  a
+
+
+
 parseParamType = (query) ->
   result = []
   for own key, queryParam of query
-    o = {key}
-    if queryParam?.$boost
-      o.boost = queryParam.$boost
-      delete queryParam.$boost
-
-    # If the key uses dot notation, then create a getter function
-    if key.indexOf(".") isnt -1
-      o.getter = utils.makeGetter(key)
+    o = fn23(key, queryParam)
+    #p = fn(key, queryParam)
 
     paramType = utils.getType(queryParam)
     switch paramType
     # Test for Regexs and Dates as they can be supplied without an operator
-      when "RegExp", "Date"
-        o.type = "$#{paramType.toLowerCase()}"
-        o.value = queryParam
-
       when "Object"
       # If the key is one of the compound keys, then parse the param as a raw query
         if utils.includes(key, utils.compoundKeys)
@@ -112,9 +184,9 @@ parseParamType = (query) ->
                 else o.value = value
             else throw new Error("Query value (#{value}) doesn't match query type: (#{type})")
       # If the query_param is not an object or a regexp then revert to the default operator: $equal
-      else
-        o.type = "$equal"
-        o.value = queryParam
+    #console.log(p)
+    console.log(o)
+    #o = p
 
     # For "$equal" queries with arrays or objects we need to perform a deep equal
     if (o.type is "$equal") and (utils.includes(paramType, ["Object", "Array"]))
@@ -127,40 +199,62 @@ parseParamType = (query) ->
   # Return the query object
   return result
 
+isOrQueryWithMultipleKeys = (type) ->
+  R.both(
+    R.compose(R.lte(2), R.length)
+    R.always(R.equals(type, "$or"))
+  )
 
-# This function parses and normalizes raw queries.
+
 parseSubQuery = (rawQuery, type) ->
-  # Ensure that the query is an array
-  if utils.isArray(rawQuery)
-    queryArray = rawQuery
-  else
-    queryArray = (utils.makeObj(key, val) for own key, val of rawQuery)
+  R.pipe(
+    R.when(
+      R.complement(utils.isArray)
+      R.pipe(R.mapObjIndexed(R.flip(R.objOf)), R.values)
+    )
+    R.map(
+      R.pipe(
+        parseParamType,
+        R.when(
+          isOrQueryWithMultipleKeys(type)
+          R.pipe(
+            R.assoc("parsedQuery", R.__, {type:"$and"})
+            R.append(R.__, [])
+          )
+        )
+      )
+    )
+    R.flatten
+  )(rawQuery)
 
-  iteratee = (memo, query) ->
-    parsed = parseParamType(query)
-    if (type == "$or" && parsed.length >= 2) # support $or with 2 or more conditions
-      memo.push {type:"$and", parsedQuery: parsed}
-      return memo
-    else
-      memo.concat parsed
+queryValueTypes =
+  $in: R.is(Array)
+  $nin: R.is(Array)
+  $all: R.is(Array)
+  $any: R.is(Array)
+  $size: R.is(Number)
+  $regex: R.is(RegExp)
+  $regexp: R.is(RegExp)
+  $like: R.is(String)
+  $likeI: R.is(String)
+  $between: R.allPass([R.is(Array), R.all(R.identity)])
+  $betweene: R.allPass([R.is(Array), R.all(R.identity)])
+  $mod: R.is(Array)
+  $cb: R.is(Function)
+  $lt: R.identity
+  $lte: R.identity
+  $gt: R.identity
+  $gte: R.identity
 
-  # Loop through all the different queries
-  utils.reduce(iteratee, [], queryArray)
 
-# Tests query value, to ensure that it is of the correct type
 testQueryValue = (queryType, value) ->
-  valueType = utils.getType(value)
-  switch queryType
-    when "$in","$nin","$all", "$any"  then valueType is "Array"
-    when "$size"                      then valueType is "Number"
-    when "$regex", "$regexp"          then valueType is "RegExp"
-    when "$like", "$likeI"            then valueType is "String"
-    when "$between", "$mod"           then (valueType is "Array") and (value.length is 2)
-    when "$cb"                        then valueType is "Function"
-    else true
+  return true unless queryValueTypes[queryType]
+  queryValueTypes[queryType](value)
+
+
 
 # Test each attribute that is being tested to ensure that is of the correct type
-testModelAttribute = (queryType, value) ->
+testModelAttribute = R.curry (queryType, value) ->
   valueType = utils.getType(value)
   switch queryType
     when "$like", "$likeI", "$regex", "$startsWith", "$endsWith"  then valueType is "String"
@@ -169,104 +263,85 @@ testModelAttribute = (queryType, value) ->
     when "$in", "$nin"                then value?
     else true
 
+
+operators =
+  $equal: (value, attr) ->
+    # If the attribute is an array then search for the query value in the array the same as Mongo
+    if utils.isArray(attr) then utils.includes(value, attr) else (attr is value)
+  $deepEqual: utils.isEqual
+  $contains: utils.includes
+  $ne: R.complement R.equals
+  $lt: R.flip R.lt
+  $lte: R.flip R.lte
+  $gt: R.flip R.gt
+  $gte: R.flip R.gte
+  $between: R.uncurryN(2, R.compose(R.allPass, R.zipWith(R.call, [R.lt, R.gt])))
+  $betweene: R.uncurryN(2, R.compose(R.allPass, R.zipWith(R.call, [R.lte, R.gte])))
+  $in: R.flip(R.contains)
+  $nin: R.complement R.flip(R.contains)
+  $all: R.converge(R.eqBy(R.length), [R.intersection, R.identity])
+  $any: R.compose(R.length, R.intersection)
+  $size: utils.equalsBy(R.length)
+  $exists:  utils.equalsBy(R.complement(R.isNil))
+  $has:  utils.equalsBy(R.complement(R.isNil))
+  $like: R.curry (value, attr) -> attr.indexOf(value) isnt -1
+  $likeI: R.curry (value, attr) -> attr.toLowerCase().indexOf(value) isnt -1
+  $startsWith: R.curry (value, attr) -> attr.toLowerCase().indexOf(value) is 0
+  $endsWith: R.curry (value, attr) -> utils.reverseString(attr).indexOf(value) is 0
+  $type: R.type
+  $regex: R.test
+  $regexp: R.test
+  $mod: R.curry (value, attr) -> (attr % value[0]) is value[1]
+
 # Perform the actual query logic for each query and each model/attribute
-performQuery = (type, value, attr, model, getter) ->
+performQuery = R.curry (type, value, attr, model) ->
   # Handle types of queries that should not be dynamic first
-  switch type
-    when "$and", "$or", "$nor", "$not"
-      return performQuerySingle(type, value, getter, model)
-    when "$cb"              then return value.call model, attr
-    when "$elemMatch"       then return (runQuery(attr,value, null, true))
+  if type in utils.compoundKeys then return performQuerySingle(type, value, model)
+  if typeof value is 'function' then value = value()
+  operators[type](value, attr)
 
-  # If the query attribute is a function and the value isn't, it should be dynamically evaluated.
-  value = value() if typeof value is 'function'
-
-  switch type
-    when "$equal"
-      # If the attribute is an array then search for the query value in the array the same as Mongo
-      if utils.isArray(attr) then utils.includes(value, attr) else (attr is value)
-    when "$deepEqual"       then utils.isEqual(attr, value)
-    when "$contains"        then utils.includes(value, attr)
-    when "$ne"              then attr isnt value
-    when "$lt"              then value? and attr < value
-    when "$gt"              then value? and attr > value
-    when "$lte"             then value? and attr <= value
-    when "$gte"             then value? and attr >= value
-    when "$between"         then value[0]? and value[1]? and value[0] < attr < value[1]
-    when "$betweene"        then value[0]? and value[1]? and value[0] <= attr <= value[1]
-    when "$in"              then utils.includes(attr, value)
-    when "$nin"             then not utils.includes(attr, value)
-    when "$all"             then utils.intersection(value, attr).length is value.length
-    when "$any"             then utils.intersection(value, attr).length
-    when "$size"            then attr.length is value
-    when "$exists", "$has"  then attr? is value
-    when "$like"            then attr.indexOf(value) isnt -1
-    when "$likeI"           then attr.toLowerCase().indexOf(value) isnt -1
-    when "$startsWith"      then attr.toLowerCase().indexOf(value) is 0
-    when "$endsWith"        then utils.reverseString(attr).indexOf(value) is 0
-    when "$type"            then typeof attr is value
-    when "$regex", "$regexp" then value.test attr
-    when "$mod"             then (attr % value[0]) is value[1]
-    else false
 
 # This function should accept an obj like this:
 # $and: [queries], $or: [queries]
 # should return false if fails
-single = (queries, getter) ->
-  getter = parseGetter(getter) if getter
-  (model) ->
-    for queryObj in queries
-      # Early false return if any of the queries fail
-      return false unless performQuerySingle(queryObj.type, queryObj.parsedQuery, getter, model)
-    # All queries passes, so return true
-    true
+single = R.curry (queries, model) ->
+  for queryObj in queries
+    # Early false return if any of the queries fail
+    return false unless performQuerySingle(queryObj.type, queryObj.parsedQuery, model)
+  # All queries passes, so return true
+  true
 
-performQuerySingle = (type, query, getter, model) ->
-  passes = 0
-  score = 0
-  scoreInc = 1 / query.length
 
-  for q in query
-    if getter
-      attr = getter model, q.key
-    else if q.getter
-      attr = q.getter model, q.key
-    else
-      attr = model[q.key]
-    # Check if the attribute value is the right type (some operators need a string, or an array)
-    test = testModelAttribute(q.type, attr)
-    # If the attribute test is true, perform the query
-    if test
-      if q.parsedQuery #nested queries
-        test = single([q], getter)(model)
-      else test = performQuery q.type, q.value, attr, model, getter
-    if test
-      passes++
+compoundOperators =
+  $and: R.uncurryN 2, R.allPass # All Pass
+  $or: R.uncurryN 2, R.anyPass # 1+ Pass
+  $not: R.complement R.uncurryN(2, R.allPass) # 1+ fails ???
+  $nor: R.complement R.uncurryN(2, R.anyPass) # All fail ???
 
-    switch type
-      when "$and"
-        # Early false return for $and queries when any test fails
-        return false unless test
-      when "$not"
-        # Early false return for $not queries when any test passes
-        return false if test
-      when "$or"
-        # Early true return for $or queries when any test passes
-        return true if test
-      when "$nor"
-        # Early false return for $nor queries when any test passes
-        return false if test
-      else
-        throw new Error("Invalid compound method")
-
-  # For not queries, check that all tests have failed
-  if type is "$not"
-    passes is 0
-  # $or queries have failed as no tests have passed
-  # $and queries have passed as no tests failed
-  # $nor queries have passed as no tests passed
+getAttribute = R.curry (q, model) ->
+  if q.getter
+    q.getter model, q.key
   else
-    type isnt "$or"
+    model[q.key]
+
+runCorrectQuery = R.curry (q, model, attr) ->
+  if q.parsedQuery #nested queries
+    single([q])(model)
+  else
+    performQuery q.type, q.value, attr, model
+
+createQueryPredicate = R.curry (model, q) ->
+  R.pipe(
+    getAttribute(q)
+    R.both(
+      testModelAttribute(q.type)
+      runCorrectQuery(q, model)
+    )
+  )
+
+performQuerySingle = (type, query, model) ->
+  queries = R.map(createQueryPredicate(model), query)
+  compoundOperators[type](queries, model)
 
 
 # The main function to parse raw queries.
@@ -296,23 +371,6 @@ parseQuery = (query) ->
     (for type in compoundQuery
       {type, parsedQuery:parseSubQuery(query[type], type)})
 
-
-parseGetter = (getter) ->
-  return if typeof getter is 'string' then (obj, key) -> obj[getter](key) else getter
-
-runQuery = (items, query, getter, first) ->
-  if arguments.length < 2
-    # If no arguments or only the items are provided, then use the buildQuery interface
-    return buildQuery.apply this, arguments
-  if getter then getter = parseGetter(getter)
-  query = single(parseQuery(query), getter) unless (utils.getType(query) is "Function")
-
-  if first
-    fn = utils.find
-  else
-    fn = utils.filter
-  fn query, items
-
-
-
 module.exports = (query) -> single(parseQuery(query))
+
+console.log(fnObject("$and", { '$equal': 'About' }, {} ))

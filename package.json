@@ -24,6 +24,8 @@
   },
   "scripts": {
     "test": "mocha",
-    "build": "coffee -o lib/ -c src/"
+    "build": "coffee -o lib/ -c src/",
+    "prepublish": "npm run build"
+
   }
 }

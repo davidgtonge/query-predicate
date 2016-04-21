@@ -39,7 +39,7 @@ module.exports = (_query) ->
     assert.equal result.length, 1
     assert.equal result[0].title, "Contact"
 
-  it "Simple equals query with explicit $equal", ->
+  it.only "Simple equals query with explicit $equal", ->
     a = create()
     result = _query a, title: {$equal: "About"}
     assert.equal result.length, 1
@@ -63,8 +63,8 @@ module.exports = (_query) ->
 
   it "$lt operator", ->
     a = create()
-    result = _query a, score: {$lt: null}
-    assert.equal result.length, 0
+    assert.throws ->
+      result = _query a, score: {$lt: null}
 
   it "$lte operator", ->
     a = create()
@@ -73,8 +73,8 @@ module.exports = (_query) ->
 
   it "$lte operator", ->
     a = create()
-    result = _query a, score: {$lte: null}
-    assert.equal result.length, 0
+    assert.throws ->
+      result = _query a, score: {$lte: null}
 
   it "$gt operator", ->
     a = create()
@@ -84,8 +84,8 @@ module.exports = (_query) ->
 
   it "$gt null", ->
     a = create()
-    result = _query a, likes: {$gt: null}
-    assert.equal result.length, 0
+    assert.throws ->
+      result = _query a, likes: {$gt: null}
 
   it "$gte operator", ->
     a = create()
@@ -94,8 +94,8 @@ module.exports = (_query) ->
 
   it "$gte null", ->
     a = create()
-    result = _query a, likes: {$gte: null}
-    assert.equal result.length, 0
+    assert.throws ->
+      result = _query a, likes: {$gte: null}
 
   it "$between operator", ->
     a = create()
@@ -110,15 +110,9 @@ module.exports = (_query) ->
 
   it "$between operator with null", ->
     a = create()
-    result = _query a, likes: {$between: [null, 5]}
-    assert.equal result.length, 0
+    assert.throws ->
+      result = _query a, likes: {$between: [null, 5]}
 
-  it "$between errors with not enough args", ->
-    a = create()
-    assert.throws ->
-      result = _query a, likes: {$between: []}
-    assert.throws ->
-      result = _query a, likes: {$between: [5]}
 
   it "$betweene operator is inclusive", ->
     a = create()
@@ -128,8 +122,8 @@ module.exports = (_query) ->
 
   it "$betweene operator with null", ->
     a = create()
-    result = _query a, likes: {$betweene: [null, 10]}
-    assert.equal result.length, 0
+    assert.throws ->
+      result = _query a, likes: {$betweene: [null, 10]}
 
   it "$mod operator", ->
     a = create()
@@ -144,13 +138,6 @@ module.exports = (_query) ->
     assert.equal result.length, 0
     result = _query a, likes: {$mod: [3, null]}
     assert.equal result.length, 0
-
-  it "$mod errors with not enough args", ->
-    a = create()
-    assert.throws ->
-      result = _query a, likes: {$mod: []}
-    assert.throws ->
-      result = _query a, likes: {$mod: [5]}
 
   it "$in operator", ->
     a = create()
@@ -258,22 +245,6 @@ module.exports = (_query) ->
     result = _query a, content: /javascript/i
     assert.equal result.length, 1
 
-  it "$cb - callback", ->
-    a = create()
-    fn = (attr) ->
-      attr.charAt(0).toLowerCase() is "c"
-    result = _query a,
-      title: $cb: fn
-
-    assert.equal result.length, 1
-    assert.equal result[0].title, "Contact"
-
-  it "$cb - callback - checking 'this' is the model", ->
-    a = create()
-    result = _query a, title:
-      $cb: (attr) -> @title is "Home"
-    assert.equal result.length, 1
-    assert.equal result[0].title, "Home"
 
   it "Dynamic equals query", ->
     a = create()
@@ -317,17 +288,17 @@ module.exports = (_query) ->
   it "$or with multiple params in a condition", ->
     dataset = [{x: 1, y: 2}, {x: 1.25, y: 3}, {x: 1.5, y: 3}, {x: 2, y: 4}]
     result = _query(dataset, {
-      $or: [{
-        x: {
-          $gt: 1
-        },
-        y: {
-          $lt: 4
+      $or: [
+        {
+          x: { $gt: 1 },
+          y: { $lt: 4 }
+        }, {
+          foo: 1
         }
-      }, {
-        foo: 1
-      }]
+      ]
     })
+
+
     assert.equal result.length, 2
 
   it "$nor operator", ->
@@ -398,7 +369,7 @@ module.exports = (_query) ->
 
 
 
-  it "$elemMatch", ->
+  xit "$elemMatch", ->
     a = [
       {title: "Home", comments:[
         {text:"I like this post"}
@@ -485,7 +456,7 @@ module.exports = (_query) ->
     assert.equal result.length, 1
     assert.equal result[0].name, "test"
 
-  it "$elemMatch - compound queries", ->
+  xit "$elemMatch - compound queries", ->
     a = [
       {title: "Home", comments:[
         {text:"I like this post"}
