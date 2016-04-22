@@ -4,15 +4,6 @@ const assert = require("assert")
 const parse = require("../src/parser")
 const R = require("ramda")
 
-// I need to know the types of things
-/*
-types are:
-compounds with arrays
-queries
-
-
-*/
-
 const specs = {
   simple: [
     {foo: true},
@@ -99,14 +90,10 @@ const specs = {
   ]
 }
 
-// Array of 2 = compound
-// Array of 3 = query by key
-
 describe("parser", () => {
   function createTest(spec, name) {
     it("parses: " + name, () => {
       const result = parse(spec[0])
-      console.log(JSON.stringify(result, null, 4))
       assert.deepEqual(result, spec[1])
     })
   }

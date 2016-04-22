@@ -4,20 +4,11 @@ const assert = require("assert")
 const run = require("../src/run-query")
 const R = require("ramda")
 
-// I need to know the types of things
-/*
-types are:
-compounds with arrays
-queries
-
-
-*/
 const sampleData = [
   {foo: true, bar: true, id:1},
   {foo: true, bar: false, id:2}
 
 ]
-
 
 const specs = {
   equal: [
@@ -35,14 +26,10 @@ const specs = {
   ],
 }
 
-// Array of 2 = compound
-// Array of 3 = query by key
-
 describe("query-runner", () => {
   function createTest(spec, name) {
     it("correctly runs test: " + name, () => {
       const result = R.filter(run(spec[0]), sampleData)
-      console.log(JSON.stringify(result, null, 4))
       assert.deepEqual(R.pluck("id", result), spec[1])
     })
   }

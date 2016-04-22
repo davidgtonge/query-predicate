@@ -1,6 +1,7 @@
 const R = require("ramda")
+const operatorFns = require("./operators")
 const compoundKeys = ["$and", "$or", "$nor", "$not"]
-const operators = ["$equal"]
+const operators = R.keys(operatorFns)
 
 const isCompound = R.contains(R.__, compoundKeys)
 const isOperator = R.contains(R.__, operators)
@@ -50,12 +51,17 @@ const lastToPairs = R.compose(
   R.unless(R.isArrayLike, R.of),
   R.last
 )
+const lastIsNaN = R.compose(R.equals(NaN), R.last)
+const lastIsRegex = R.compose(R.is(RegExp), R.last)
 
 function parsePair(pair) {
+  console.log(pair)
   return R.cond([
     [headIsCompound, R.converge(formatCompound, [
       R.head, R.compose(R.map(parsePair), lastToPairs)
     ])],
+    [lastIsRegex, R.compose(formatQuery, R.insert(1, "$regexp"))],
+    [lastIsNaN, R.compose(formatQuery, R.insert(1, "$deepEqual"))],
     [R.compose(isOperator, R.head), R.compose(parsePair, switchValues)],
     [explicitOperator, formatWithOperatorPair],
     [R.T, R.compose(formatQuery, R.insert(1, "$equal"))]
