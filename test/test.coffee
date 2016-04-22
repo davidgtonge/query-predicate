@@ -1,16 +1,12 @@
-# Requires
 require "coffee-script"
 
 assert = require "assert"
 R = require "ramda"
-#createPredicate = require("../src/query-predicate")
-runQuery = require("../src/run-query")
-parseQuery = require("../src/parser")
-
+createPredicate = require "../src/index"
 
 query = (list, queryObj) ->
-  query = parseQuery(queryObj)
-  R.filter(runQuery(query), list)
+  predicate = createPredicate(queryObj)
+  R.filter(predicate, list)
 
 suite = require "./suite"
 
