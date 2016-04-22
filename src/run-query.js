@@ -8,24 +8,24 @@ const compoundOperators = {
   $nor: R.complement(R.uncurryN(2, R.anyPass))
 }
 
-const runOperatorQuery = R.curry((query, item) => {
-  console.log(query.op, query.val, item[query.key])
-  return operators[query.op](query.val, item[query.key])
-})
+const runOperatorQuery = R.curry((query, item) =>
+  // console.log(query.op, query.val, item[query.key])
+  operators[query.op](query.val, item[query.key])
+)
 
-const runCompoundQuery = R.curry((fn, query, item) => {
-  return compoundOperators[query.op](
+const runCompoundQuery = R.curry((fn, query, item) =>
+  compoundOperators[query.op](
     R.map(fn, query.queries)
   )(item)
-})
+)
 
-const runQuery = R.curry((query, data) => {
-  return R.ifElse(
+const runQuery = R.curry((query, data) =>
+  R.ifElse(
     R.propEq("_type", "compound"),
     runCompoundQuery(runQuery),
     runOperatorQuery
   )(query, data)
-})
+)
 
 const run = R.compose(
   R.allPass,

@@ -510,7 +510,7 @@ module.exports = (_query) ->
       ]
     assert.equal result.length, 0
 
-  it.skip "Testing nested compound operators", ->
+  it "Testing nested compound operators", ->
     a = create()
     result = _query a,
       $and: [

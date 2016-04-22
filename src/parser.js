@@ -55,7 +55,6 @@ const lastIsNaN = R.compose(R.equals(NaN), R.last)
 const lastIsRegex = R.compose(R.is(RegExp), R.last)
 
 function parsePair(pair) {
-  console.log(pair)
   return R.cond([
     [headIsCompound, R.converge(formatCompound, [
       R.head, R.compose(R.map(parsePair), lastToPairs)
