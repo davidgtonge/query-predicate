@@ -7,9 +7,15 @@ const operators = R.keys(operatorFns)
 
 const isCompound = R.contains(R.__, compoundKeys)
 const isOperator = R.contains(R.__, operators)
+
 const explicitOperator = R.allPass([
   R.compose(R.is(Object), R.last),
   R.compose(isOperator, R.head, R.head, R.toPairs, R.last)
+])
+
+const explicitMultipleOperators = R.allPass([
+  explicitOperator,
+  R.compose(R.gt(R.__, 1), R.length, R.keys, R.last)
 ])
 
 const getQueryTypeFn = R.flip(R.propOr(R.T))(queryValueTypes)
@@ -65,18 +71,24 @@ const formatWithOperatorPair = R.compose(
 
 const headIsCompound = R.compose(isCompound, R.head)
 const headIsOperator = R.compose(isOperator, R.head)
+const headIsCompoundWithMultiple = R.allPass([
+  headIsCompound,
+  R.compose(R.isArrayLike, R.last),
+  R.compose(R.gt(R.__, 1), R.length, R.last)
+])
+
 const lastToPairs = R.compose(
-  R.unnest,
+  // R.unnest,
   R.map(R.toPairs),
   R.unless(R.isArrayLike, R.of),
   R.last
 )
 const lastIsNaN = R.compose(R.equals(NaN), R.last)
 const lastIsRegex = R.compose(R.is(RegExp), R.last)
+const lastIsFunction = R.compose(R.is(Function), R.last)
 
 const lastKeyIsCompound = R.compose(isCompound, R.head, R.keys, R.last)
 
-const hasMultipleOperators = R.compose(R.gt(R.__, 1), R.length, R.keys, R.last)
 
 const splitMultilpleOperatorQueries = R.compose(
   R.map(R.compose(R.of, R.apply(R.objOf))),
@@ -91,18 +103,24 @@ const mergeSplitOperatorQueries = R.converge(
 
 function parsePair(pair) {
   return R.cond([
+    [headIsCompoundWithMultiple, R.converge(formatCompound, [
+      R.head, R.compose(
+        R.map(R.compose(formatCompound("$and"), R.map(parsePair))),
+        lastToPairs
+      )
+    ])],
     [headIsCompound, R.converge(formatCompound, [
-      R.head, R.compose(R.map(parsePair), lastToPairs)
+      R.head, R.compose(R.map(parsePair), R.unnest, lastToPairs)
     ])],
     [lastIsRegex, R.compose(formatQuery, R.insert(1, "$regexp"))],
     [lastIsNaN, R.compose(formatQuery, R.insert(1, "$deepEqual"))],
+    [lastIsFunction, R.compose(formatQuery, R.insert(1, "$equal"))],
     [lastKeyIsCompound, R.compose(parsePair, switchValues)],
     [headIsOperator, R.compose(parsePair, switchValues)],
-    [explicitOperator, R.ifElse(
-      hasMultipleOperators,
-      R.compose(R.map(parsePair), mergeSplitOperatorQueries),
-      formatWithOperatorPair
+    [explicitMultipleOperators, R.compose(
+      formatCompound("$and"), R.map(parsePair), mergeSplitOperatorQueries
     )],
+    [explicitOperator, formatWithOperatorPair],
     [R.T, R.compose(formatQuery, R.insert(1, "$equal"))]
   ])(pair)
 }
