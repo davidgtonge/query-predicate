@@ -1,5 +1,5 @@
 const R = require("ramda")
-const operators = require("./operators")
+const operators = require("./operators").operators
 
 const compoundOperators = {
   $and: R.uncurryN(2, R.allPass),

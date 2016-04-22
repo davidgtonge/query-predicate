@@ -35,4 +35,24 @@ const operators = {
   $mod: R.curry((value, attr) => attr % value[0] === value[1])
 }
 
-module.exports = operators
+const queryValueTypes = {
+  $in: R.is(Array),
+  $nin: R.is(Array),
+  $all: R.is(Array),
+  $any: R.is(Array),
+  $size: R.is(Number),
+  $regex: R.is(RegExp),
+  $regexp: R.is(RegExp),
+  $like: R.is(String),
+  $likeI: R.is(String),
+  $between: R.allPass([R.is(Array), R.all(R.identity)]),
+  $betweene: R.allPass([R.is(Array), R.all(R.identity)]),
+  $mod: R.is(Array),
+  $cb: R.is(Function),
+  $lt: R.identity,
+  $lte: R.identity,
+  $gt: R.identity,
+  $gte: R.identity
+}
+
+module.exports = {operators, queryValueTypes}

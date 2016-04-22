@@ -65,7 +65,7 @@ module.exports = (_query) ->
     assert.equal result.length, 1
     assert.equal result[0].title, "About"
 
-  xit "$lt operator", ->
+  it "$lt operator", ->
     a = create()
     assert.throws ->
       result = _query a, score: {$lt: null}
@@ -75,7 +75,7 @@ module.exports = (_query) ->
     result = _query a, likes: {$lte: 12}
     assert.equal result.length, 2
 
-  xit "$lte operator", ->
+  it "$lte operator", ->
     a = create()
     assert.throws ->
       result = _query a, score: {$lte: null}
@@ -86,7 +86,7 @@ module.exports = (_query) ->
     assert.equal result.length, 1
     assert.equal result[0].title, "Contact"
 
-  xit "$gt null", ->
+  it "$gt null", ->
     a = create()
     assert.throws ->
       result = _query a, likes: {$gt: null}
@@ -96,7 +96,7 @@ module.exports = (_query) ->
     result = _query a, likes: {$gte: 12}
     assert.equal result.length, 2
 
-  xit "$gte null", ->
+  it "$gte null", ->
     a = create()
     assert.throws ->
       result = _query a, likes: {$gte: null}
@@ -112,7 +112,7 @@ module.exports = (_query) ->
     result = _query a, likes: {$between: [1,2]}
     assert.equal result.length, 0
 
-  xit "$between operator with null", ->
+  it "$between operator with null", ->
     a = create()
     assert.throws ->
       result = _query a, likes: {$between: [null, 5]}
@@ -124,7 +124,7 @@ module.exports = (_query) ->
     assert.equal result.length, 1
     assert.equal result[0].title, "About"
 
-  xit "$betweene operator with null", ->
+  it "$betweene operator with null", ->
     a = create()
     assert.throws ->
       result = _query a, likes: {$betweene: [null, 10]}
@@ -148,7 +148,7 @@ module.exports = (_query) ->
     result = _query a, title: {$in: ["Home","About"]}
     assert.equal result.length, 2
 
-  xit "$in operator with wrong query value", ->
+  it "$in operator with wrong query value", ->
     a = create()
     assert.throws ->
        _query a, title: {$in: "Home"}
@@ -164,7 +164,7 @@ module.exports = (_query) ->
     result = _query a, colors: {$all: ["red","blue"]}
     assert.equal result.length, 2
 
-  xit "$all operator (wrong values)", ->
+  it "$all operator (wrong values)", ->
     a = create()
     result = _query a, title: {$all: ["red","blue"]}
     assert.equal result.length, 0
@@ -575,7 +575,7 @@ module.exports = (_query) ->
 
 
 
-  xit "Handles multiple inequalities", ->
+  it "Handles multiple inequalities", ->
     a = create()
     result = _query a, likes: {  $gt: 2, $lt: 20  }
     assert.equal result.length, 1
@@ -602,19 +602,19 @@ module.exports = (_query) ->
     assert.equal result[0].title, "About"
     assert.equal result[1].title, "Contact"
 
-  xit "Handles nested multiple inequalities", ->
+  it "Handles nested multiple inequalities", ->
     a = create()
     result = _query a, $and: [likes: {  $gt: 2, $lt: 20  }]
     assert.equal result.length, 1
     assert.equal result[0].title, "Home"
 
 
-  xit "combination of $gt and $lt - mongo style", ->
+  it "combination of $gt and $lt - mongo style", ->
     a = create()
     result = _query a, {likes: { $gt: 2, $lt: 20}}
     assert.equal result.length, 1
 
-  xit "$not combination of $gt and $lt  - mongo style", ->
+  it "$not combination of $gt and $lt  - mongo style", ->
     a = create()
     result = _query a, {likes: {$not: { $gt: 2, $lt: 20}}}
     assert.equal result.length, 2
@@ -630,27 +630,29 @@ module.exports = (_query) ->
 #    result = _query a, {likes: {$nor: [{ $gt: 2}, {$lt: 20}]}}
 #    assert.equal result.length, 0
 
-  xit "combination of $gt  and $not", ->
-    a = create()
-    result = _query a, {likes: { $not: 2, $lt: 20}}
-    assert.equal result.length, 1
+  # I wont support this query - I don't like the ambiguity of $not being an operator and a compound
+  # it "combination of $gt  and $not", ->
+  #   a = create()
+  #   result = _query a, {likes: { $not: 2, $lt: 20}}
+  #   assert.equal result.length, 1
 
-  xit "equal within an array (#21)", ->
-    tweets = [{
-      "entities": {
-        "user_mentions": [{
-          "id_str": "10228271"
-        }]
-      }
-    }, {
-      "entities": {
-        "user_mentions": [{
-          "id_str": "10228272"
-        }]
-      }
-    }]
-
-    res = _query tweets, {"entities.user_mentions.id_str": "10228272"}
-    assert.equal(res.length, 1)
-    res = _query tweets, {"entities.user_mentions.id_str": "10228273"}
-    assert.equal(res.length, 0)
+  # I don't really like the ambiguity of this query. It can be achieved through a $contains I think
+  # it.only "equal within an array (#21)", ->
+  #   tweets = [{
+  #     "entities": {
+  #       "user_mentions": [{
+  #         "id_str": "10228271"
+  #       }]
+  #     }
+  #   }, {
+  #     "entities": {
+  #       "user_mentions": [{
+  #         "id_str": "10228272"
+  #       }]
+  #     }
+  #   }]
+  #
+  #   res = _query tweets, {"entities.user_mentions.id_str": "10228272"}
+  #   assert.equal(res.length, 1)
+  #   res = _query tweets, {"entities.user_mentions.id_str": "10228273"}
+  #   assert.equal(res.length, 0)
