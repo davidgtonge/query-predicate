@@ -1,8 +1,10 @@
 const R = require("ramda")
 
-function equalsBy(fn) {
-  return R.curry((a, b) => R.identical(a, fn(b)))
-}
+const equalsBy = R.curryN(3, R.converge(
+  R.identical,
+  [R.nthArg(1), R.converge(R.call, [R.nthArg(0), R.nthArg(2)])]
+))
+
 const lastArgIsArray = R.compose(R.isArrayLike, R.nthArg(1))
 
 const operators = {

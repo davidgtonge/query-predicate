@@ -3,10 +3,12 @@ require "coffee-script"
 assert = require('assert')
 _ = require "underscore"
 R = require "ramda"
-createPredicate = require("../src/query-predicate")
+runQuery = require("../src/run-query")
+parseQuery = require("../src/parser")
 
 _.query = (list, queryObj) ->
-  R.filter(createPredicate(queryObj), list)
+  query = parseQuery(queryObj)
+  R.filter(runQuery(query), list)
 
 _collection =  [
   {title:"Home", colors:["red","yellow","blue"], likes:12, featured:true, content: "Dummy content about coffeescript", blank: null}
@@ -18,7 +20,7 @@ _collection =  [
 
 create = -> _.clone(_collection)
 
-describe "Underscore Query Tests: Blanks", ->
+describe "Query Predicate Tests: Blanks", ->
 
   it "handles null values", ->
 
@@ -48,6 +50,6 @@ describe "Underscore Query Tests: Blanks", ->
   it "handles empty array values", ->
 
     a = create()
-    result = _.query a, blank: []
+    result = _.query a, blank: {$deepEqual: []}
     assert.equal result.length, 1
     assert.equal result[0].title, "Sponsors"

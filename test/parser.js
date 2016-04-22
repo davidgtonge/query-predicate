@@ -73,21 +73,6 @@ const specs = {
       ]}
     ]
   ],
-  "nested compound": [
-    {$and: {
-      foo: true,
-      $or: [{bar:false}, {foobar: true}]
-    }},
-    [
-      {_type: "compound", op: "$and", queries: [
-        {_type:"query", key:"foo", op:"$equal", val: true},
-        {_type:"compound", op: "$or", queries: [
-          {_type:"query", key:"bar", op:"$equal", val: false},
-          {_type:"query", key:"foobar", op:"$equal", val: true},
-        ]}
-      ]}
-    ]
-  ]
 }
 
 describe("parser", () => {

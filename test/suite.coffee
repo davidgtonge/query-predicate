@@ -22,10 +22,10 @@ module.exports = (_query) ->
     result = _query a, colors: "blue"
     assert.equal result.length, 2
 
-  xit "Equals query with array value", ->
-    a = create()
-    result = _query a, colors: ["red", "blue"]
-    assert.equal result.length, 1
+  # it "Equals query with array value", ->
+  #   a = create()
+  #   result = _query a, colors: ["red", "blue"]
+  #   assert.equal result.length, 1
 
   it "Simple equals query (no results)", ->
     a = create()
@@ -250,14 +250,14 @@ module.exports = (_query) ->
     assert.equal result.length, 1
 
 
-  xit "Dynamic equals query", ->
+  it "Dynamic equals query", ->
     a = create()
     result = _query a, title:()->"Homes"
     assert.equal result.length, 0
     result = _query a, title:()->"Home"
     assert.equal result.length, 1
 
-  xit "ensure dynamic query not cached", ->
+  it "ensure dynamic query not cached", ->
     a = create()
     count = 12 - a.length
     queryObj = likes: $lt: -> count += 1
@@ -289,7 +289,7 @@ module.exports = (_query) ->
     result = _query a, $or: [{likes: {$gt: 5}}, {featured: true}]
     assert.equal result.length, 3
 
-  xit "$or with multiple params in a condition", ->
+  it "$or with multiple params in a condition", ->
     dataset = [{x: 1, y: 2}, {x: 1.25, y: 3}, {x: 1.5, y: 3}, {x: 2, y: 4}]
     result = _query(dataset, {
       $or: [
@@ -310,15 +310,6 @@ module.exports = (_query) ->
     result = _query a, $nor: [{likes: {$gt: 5}}, {colors: {$contains: "yellow"}}]
     assert.equal result.length, 1
     assert.equal result[0].title, "About"
-
-  for type in ["$and", "$or", "$nor"]
-    xit type + " throws error when not an array", ->
-      a = create()
-      query = {}
-      query[type] = {
-        a: 1
-      }
-      assert.throws((-> _query(a, query)), Error);
 
   it "Compound Queries", ->
     a = create()
@@ -351,22 +342,22 @@ module.exports = (_query) ->
     assert.equal result.length, 2
 
   #These tests fail, but would pass if it $not worked parallel to MongoDB
-  xit "$not operator", ->
+  it "$not operator", ->
     a = create()
     result = _query a, {likes:  {$not: {$lt: 12}}}
     assert.equal result.length, 2
 
-  xit "$not operator", ->
+  it "$not operator", ->
     a = create()
     result = _query a, likes: {$not:  12}
     assert.equal result.length, 2
 
-  xit "$not $equal operator", ->
+  it "$not $equal operator", ->
     a = create()
     result = _query a, likes: {$not:  {$equal: 12}}
     assert.equal result.length, 2
 
-  xit "$not $equal operator", ->
+  it "$not $equal operator", ->
     a = create()
     result = _query a, likes: {$not:  {$ne: 12}}
     assert.equal result.length, 1

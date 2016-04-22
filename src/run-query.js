@@ -1,19 +1,17 @@
 const R = require("ramda")
 const operators = require("./operators").operators
-
-const compoundOperators = {
-  $and: R.uncurryN(2, R.allPass),
-  $or: R.uncurryN(2, R.anyPass),
-  $not: R.complement(R.uncurryN(2, R.allPass)),
-  $nor: R.complement(R.uncurryN(2, R.anyPass))
-}
+const compoundOperators = require("./operators").compoundOperators
 
 const getVal = R.useWith(
   R.path,
   [R.compose(R.split("."), R.prop("key")), R.identity]
 )
 
-const getQueryVal = R.prop("val")
+const getQueryVal = R.compose(
+  R.when(R.is(Function), R.flip(R.apply)([])),
+  R.prop("val")
+)
+
 const getOperatorMethod = R.compose(
   R.flip(R.prop)(operators),
   R.prop("op")
@@ -40,13 +38,13 @@ const runCompoundQuery = R.curryN(3, R.converge(
   [getCompoundMethod, mapCompoundQueries, R.nthArg(2)]
 ))
 
-const runQuery = R.curry((query, data) =>
-  R.ifElse(
+const runQuery = R.curry((query, data) => {
+  return R.ifElse(
     R.propEq("_type", "compound"),
     runCompoundQuery(runQuery),
     runOperatorQuery
   )(query, data)
-)
+})
 
 const run = R.compose(
   R.allPass,
