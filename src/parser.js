@@ -1,7 +1,8 @@
 const R = require("ramda")
 const operatorFns = require("./operators").operators
 const queryValueTypes = require("./operators").queryValueTypes
-const compoundKeys = ["$and", "$or", "$nor", "$not"]
+const compoundOperators = require("./operators").compoundOperators
+const compoundKeys = R.keys(compoundOperators)
 const operators = R.keys(operatorFns)
 
 const isCompound = R.contains(R.__, compoundKeys)

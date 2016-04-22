@@ -55,4 +55,11 @@ const queryValueTypes = {
   $gte: R.identity
 }
 
-module.exports = {operators, queryValueTypes}
+const compoundOperators = {
+  $and: R.uncurryN(2, R.allPass),
+  $or: R.uncurryN(2, R.anyPass),
+  $not: R.complement(R.uncurryN(2, R.allPass)),
+  $nor: R.complement(R.uncurryN(2, R.anyPass))
+}
+
+module.exports = {operators, queryValueTypes, compoundOperators}
