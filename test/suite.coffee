@@ -558,7 +558,7 @@ module.exports = (_query) ->
     assert.equal result[1].title, "About"
 
 
-  xit "works with dot notation", ->
+  it "works with dot notation", ->
     collection =  [
       {title:"Home", stats:{likes:10, views:{a:{b:500}}}}
       {title:"About", stats:{likes:5, views:{a:{b:234}}}}
