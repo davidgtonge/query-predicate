@@ -19,6 +19,7 @@ const explicitMultipleOperators = R.allPass([
 ])
 
 const getQueryTypeFn = R.flip(R.propOr(R.T))(queryValueTypes)
+
 function throwOnInvalidQueryVal(q) {
   throw new Error(q.op + " query value (" + q.val + ") isn't valid")
 }

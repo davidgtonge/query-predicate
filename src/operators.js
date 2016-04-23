@@ -7,6 +7,13 @@ const equalsBy = R.curryN(3, R.converge(
 
 const lastArgIsArray = R.compose(R.isArrayLike, R.nthArg(1))
 
+const $like = R.compose(R.lte(0), R.invoker(1, "indexOf"))
+const $startsWith = R.compose(R.equals(0), R.invoker(1, "indexOf"))
+const $mod = R.converge(R.identical, [
+  R.converge(R.modulo, [R.nthArg(1), R.compose(R.head, R.nthArg(0))]),
+  R.compose(R.last, R.nthArg(0))
+])
+
 const operators = {
   $equal: R.ifElse(lastArgIsArray, R.contains, R.identical),
   $deepEqual: R.equals,
@@ -27,14 +34,14 @@ const operators = {
   $size: equalsBy(R.length),
   $exists:  equalsBy(R.complement(R.isNil)),
   $has:  equalsBy(R.complement(R.isNil)),
-  $like: R.curry((value, attr) => attr.indexOf(value) !== -1),
-  $likeI: R.curry((value, attr) => attr.toLowerCase().indexOf(value) !== -1),
+  $like,
+  $likeI: R.useWith($like, [R.identity, R.toLower]),
   $type: R.type,
   $regex: R.test,
   $regexp: R.test,
-  $startsWith: (value, attr) => attr.indexOf(value) === 0,
-  $endsWith: (value, attr) => R.reverse(attr).indexOf(R.reverse(value)) === 0,
-  $mod: R.curry((value, attr) => attr % value[0] === value[1])
+  $startsWith,
+  $endsWith: R.useWith($startsWith, [R.reverse, R.reverse]),
+  $mod
 }
 
 const queryValueTypes = {
