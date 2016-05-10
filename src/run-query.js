@@ -38,13 +38,13 @@ const runCompoundQuery = R.curryN(3, R.converge(
   [getCompoundMethod, mapCompoundQueries, R.nthArg(2)]
 ))
 
-const runQuery = R.curry((query, data) => {
-  return R.ifElse(
+const runQuery = R.curry((query, data) =>
+  R.ifElse(
     R.propEq("_type", "compound"),
     runCompoundQuery(runQuery),
     runOperatorQuery
   )(query, data)
-})
+)
 
 const run = R.compose(
   R.allPass,
