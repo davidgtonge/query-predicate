@@ -38,12 +38,22 @@ const runCompoundQuery = R.curryN(3, R.converge(
   [getCompoundMethod, mapCompoundQueries, R.nthArg(2)]
 ))
 
+const fn = R.curry((fn2, queries, obj) =>
+  R.all(R.flip(fn2)(obj), queries)
+)
+
+const runElemMatchQuery = R.curry((queryRunner, elemMatchQuery, data) => {
+  const queryData = R.path(elemMatchQuery.key, data)
+
+  return R.any(fn(queryRunner, elemMatchQuery.queries), queryData)
+})
+
 const runQuery = R.curry((query, data) =>
-  R.ifElse(
-    R.propEq("_type", "compound"),
-    runCompoundQuery(runQuery),
-    runOperatorQuery
-  )(query, data)
+  R.cond([
+    [R.propEq("_type", "query"), runOperatorQuery],
+    [R.propEq("_type", "compound"), runCompoundQuery(runQuery)],
+    [R.propEq("_type", "elemMatch"), runElemMatchQuery(runQuery)],
+  ])(query, data)
 )
 
 const run = R.compose(

@@ -78,4 +78,12 @@ describe("filtering", () => {
     const result = filterAndSort([{a:{$gt:2}}], {a:-1}, collection)
     deepEqual(result, [collection[4], collection[3], collection[2]])
   })
+
+  it("filterAndSort works with a multiple filters", () => {
+    const result = filterAndSort(
+      [{a:{$gt:2}}, {"b.c":{$lt: 4}}], {a:-1},
+      collection
+    )
+    deepEqual(result, [collection[2]])
+  })
 })

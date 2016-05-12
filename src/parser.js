@@ -7,6 +7,7 @@ const operators = R.keys(operatorFns)
 
 const isCompound = R.contains(R.__, compoundKeys)
 const isOperator = R.contains(R.__, operators)
+const isElemMatch = R.equals("$elemMatch")
 
 const explicitOperator = R.allPass([
   R.compose(R.is(Object), R.last),
@@ -46,6 +47,12 @@ const formatQuery = R.compose(
 const formatCompound = R.curryN(2, R.applySpec({
   _type: R.always("compound"),
   op: R.nthArg(0),
+  queries: R.compose(R.unnest, R.nthArg(1))
+}))
+
+const formatElemMatch = R.curryN(2, R.applySpec({
+  _type: R.always("elemMatch"),
+  key: R.compose(R.split("."), R.nthArg(0)),
   queries: R.compose(R.unnest, R.nthArg(1))
 }))
 
@@ -89,6 +96,7 @@ const lastIsRegex = R.compose(R.is(RegExp), R.last)
 const lastIsFunction = R.compose(R.is(Function), R.last)
 
 const lastKeyIsCompound = R.compose(isCompound, R.head, R.keys, R.last)
+const lastKeyIsElemMatch = R.compose(isElemMatch, R.head, R.keys, R.last)
 
 
 const splitMultilpleOperatorQueries = R.compose(
@@ -117,6 +125,10 @@ function parsePair(pair) {
     [lastIsNaN, R.compose(formatQuery, R.insert(1, "$deepEqual"))],
     [lastIsFunction, R.compose(formatQuery, R.insert(1, "$equal"))],
     [lastKeyIsCompound, R.compose(parsePair, switchValues)],
+    [lastKeyIsElemMatch, R.converge(formatElemMatch, [
+      R.head,
+      R.compose(R.map(parsePair), R.toPairs, R.prop("$elemMatch"), R.last)
+    ])],
     [headIsOperator, R.compose(parsePair, switchValues)],
     [explicitMultipleOperators, R.compose(
       formatCompound("$and"), R.map(parsePair), mergeSplitOperatorQueries
@@ -133,11 +145,16 @@ function parseQuery(thing) {
   ])(thing)
 }
 
+const isQueryLike = R.propSatisfies(
+  R.contains(R.__, ["query", "elemMatch"]),
+  "_type"
+)
+
 const run = R.compose(
   R.unnest,
   R.values,
-  R.evolve({query: formatCompound("$and")}),
-  R.groupBy(R.prop("_type")),
+  R.evolve({true: formatCompound("$and")}),
+  R.groupBy(isQueryLike),
   R.unnest,
   parseQuery
 )

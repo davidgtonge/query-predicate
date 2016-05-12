@@ -364,7 +364,7 @@ module.exports = (_query) ->
 
 
 
-  xit "$elemMatch", ->
+  it "$elemMatch", ->
     a = [
       {title: "Home", comments:[
         {text:"I like this post"}
@@ -451,7 +451,7 @@ module.exports = (_query) ->
     assert.equal result.length, 1
     assert.equal result[0].name, "test"
 
-  xit "$elemMatch - compound queries", ->
+  it "$elemMatch - compound queries", ->
     a = [
       {title: "Home", comments:[
         {text:"I like this post"}

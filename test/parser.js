@@ -50,6 +50,14 @@ const specs = {
       {_type:"query", key:"foo", op:"$equal", val: true}
     ]}]
   ],
+  "elemMatch": [
+    {foo: {$elemMatch: {bar: true}}},
+    [{_type: "compound", op: "$and", queries: [
+      {_type:"elemMatch", key:["foo"], queries: [
+        {_type:"query", key:"bar", op:"$equal", val: true}
+      ]}
+    ]}]
+  ],
   "explicit compound with array": [
     {$and: [{foo: {$equal: true}}]},
     [{_type: "compound", op: "$and", queries: [
