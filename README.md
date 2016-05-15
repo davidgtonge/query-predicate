@@ -27,7 +27,7 @@ Currently there are only 4 function declarations.
  reason about
  - 1 is needed to throw errors
 
-I think when used well by people with familiar with functional apis (such as
+I think when used well by people who are familiar with functional apis (such as
 Ramda), the style is very expressive. At a simple level a procedural for loop
 could be used for `map` or `filter` or `reduce`. By using `map` rather than
 a for loop, the intent of my program is easier to understand.

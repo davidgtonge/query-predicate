@@ -90,10 +90,9 @@ function combinePermutations2(filterPermutations, collection) {
   )(collection)
 }
 
-// function sortByMap(sortMap, collection) {
-//   return sortBy(sortMap.get.bind(sortMap), collection)
-// }
-
+function sortByMap(sortMap) {
+  return sortBy(sortMap.get.bind(sortMap))
+}
 
 const queryCache = {}
 function getCachedQuery(query) {
@@ -125,6 +124,16 @@ function filterAndSort(filterQueries, sortQuery, collection) {
   )
 }
 
+function filterAndSort2(filterQueries, sortQuery, collection) {
+  return compose(
+    sortByMap(getSortPermutation(collection, sortQuery)),
+    combinePermutations2(
+      map(getFilterPermutation(collection), filterQueries),
+      collection
+    )()
+  )
+}
+
 function filterNoSort(filterQueries, collection) {
   return combinePermutations2(
     map(getFilterPermutation(collection), filterQueries),
@@ -147,6 +156,7 @@ module.exports = {
   combinePermutations,
   combinePermutations2,
   filterAndSort,
+  filterAndSort2,
   filterNoSort,
   primeFilterCache,
   primeSortCache

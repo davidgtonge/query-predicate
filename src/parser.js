@@ -86,7 +86,6 @@ const headIsCompoundWithMultiple = R.allPass([
 ])
 
 const lastToPairs = R.compose(
-  // R.unnest,
   R.map(R.toPairs),
   R.unless(R.isArrayLike, R.of),
   R.last
