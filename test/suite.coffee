@@ -616,10 +616,10 @@ module.exports = (_query) ->
     assert.equal result.length, 0
 
 #  This query is not a valid MongoDB query, but if it were one would expect it to yield an empty set
-#  it "$nor combination of $gt and $lt  - values", ->
-#    a = create()
-#    result = _query a, {likes: {$nor: [{ $gt: 2}, {$lt: 20}]}}
-#    assert.equal result.length, 0
+  #  it "$nor combination of $gt and $lt  - values", ->
+  #    a = create()
+  #    result = _query a, {likes: {$nor: [{ $gt: 2}, {$lt: 20}]}}
+  #    assert.equal result.length, 0
 
   # I wont support this query - I don't like the ambiguity of $not being an operator and a compound
   # it "combination of $gt  and $not", ->
