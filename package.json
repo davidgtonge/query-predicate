@@ -1,7 +1,7 @@
 {
-  "name": "underscore-query",
+  "name": "query-predicate",
   "description": "Query Predicate Generator using Mongo Query Language",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "author": "Dave Tonge <dave.tonge@momentumft.co.uk> (https://github.com/davidgtonge)",
   "tags": [
     "mongo",

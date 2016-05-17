@@ -4,6 +4,8 @@ const queryValueTypes = require("./operators").queryValueTypes
 const compoundOperators = require("./operators").compoundOperators
 const compoundKeys = R.keys(compoundOperators)
 const operators = R.keys(operatorFns)
+const regexKey = "$regex"
+const regexOptionsKey = "$options"
 
 const isCompound = R.contains(R.__, compoundKeys)
 const isOperator = R.contains(R.__, operators)
@@ -16,7 +18,8 @@ const explicitOperator = R.allPass([
 
 const explicitMultipleOperators = R.allPass([
   explicitOperator,
-  R.compose(R.gt(R.__, 1), R.length, R.keys, R.last)
+  R.compose(R.gt(R.__, 1), R.length, R.keys, R.last),
+  R.compose(R.not, R.path([1, regexOptionsKey]))
 ])
 
 const getQueryTypeFn = R.flip(R.propOr(R.T))(queryValueTypes)
@@ -70,10 +73,23 @@ const switchValues = R.converge(
   [getKey, getRest]
 )
 
+const regexPair = R.compose(
+  R.append(R.__, [regexKey]),
+  R.ifElse(
+    R.propIs(String, regexKey),
+    R.converge(RegExp, [R.prop(regexKey), R.propOr("", regexOptionsKey)]),
+    R.prop(regexKey)
+  )
+)
+
 const formatWithOperatorPair = R.compose(
   formatQuery,
   R.unnest,
-  R.adjust(singlePair, 1)
+  R.ifElse(
+    R.path([1, regexKey]),
+    R.adjust(regexPair, 1),
+    R.adjust(singlePair, 1)
+  )
 )
 
 
@@ -120,7 +136,7 @@ function parsePair(pair) {
     [headIsCompound, R.converge(formatCompound, [
       R.head, R.compose(R.map(parsePair), R.unnest, lastToPairs)
     ])],
-    [lastIsRegex, R.compose(formatQuery, R.insert(1, "$regexp"))],
+    [lastIsRegex, R.compose(formatQuery, R.insert(1, regexKey))],
     [lastIsNaN, R.compose(formatQuery, R.insert(1, "$deepEqual"))],
     [lastIsFunction, R.compose(formatQuery, R.insert(1, "$equal"))],
     [lastKeyIsCompound, R.compose(parsePair, switchValues)],

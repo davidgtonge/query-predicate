@@ -249,6 +249,15 @@ module.exports = (_query) ->
     result = _query a, content: /javascript/i
     assert.equal result.length, 1
 
+  it "$regex with object", ->
+    a = create()
+    result = _query a, content: {$regex: 'dummy'}
+    assert.equal result.length, 1
+
+  it "$regex with object+options", ->
+    a = create()
+    result = _query a, content: {$regex: 'dummy', $options: 'i'}
+    assert.equal result.length, 3
 
   it "Dynamic equals query", ->
     a = create()
