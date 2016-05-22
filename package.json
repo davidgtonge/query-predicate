@@ -14,16 +14,23 @@
     "type": "git",
     "url": "https://github.com/davidgtonge/query-predicate.git"
   },
+  "scripts": {
+    "test": "mocha",
+    "build": "babel src -d lib",
+    "prepublish": "npm run build"
+  },
   "dependencies": {
     "ramda": "^0.21.0"
   },
   "devDependencies": {
+    "babel-cli": "^6.9.0",
+    "babel-preset-es2015": "^6.9.0",
+    "benchmark": "^2.1.0",
     "coffee-script": ">=1.7.x",
+    "lodash": "^4.12.0",
     "mocha": "",
-    "underscore": "^1.8.3"
-  },
-  "scripts": {
-    "test": "mocha"
+    "underscore": "^1.8.3",
+    "underscore-query": "^3.2.1"
   },
   "engines": {
     "node": ">=5.0.x"
