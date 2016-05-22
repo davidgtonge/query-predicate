@@ -1,7 +1,7 @@
 {
   "name": "query-predicate",
   "description": "Query Predicate Generator using Mongo Query Language",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Dave Tonge <dave.tonge@momentumft.co.uk> (https://github.com/davidgtonge)",
   "tags": [
     "mongo",
