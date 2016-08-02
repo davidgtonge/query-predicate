@@ -624,6 +624,18 @@ module.exports = (_query) ->
     result = _query a, {$nor: [{likes: { $gt: 2}}, {likes: { $lt: 20}}]}
     assert.equal result.length, 0
 
+  it "compound $ands (underscore-query #29)", ->
+    a = create()
+
+    res = _query(a, {
+      $and: [{
+        $and: [ likes: {$gt: 5 } ]
+      }]
+    })
+
+    assert.equal(res.length, 2)
+
+
 #  This query is not a valid MongoDB query, but if it were one would expect it to yield an empty set
   #  it "$nor combination of $gt and $lt  - values", ->
   #    a = create()
