@@ -5,7 +5,7 @@ const equalsBy = R.curryN(3, R.converge(
   [R.nthArg(1), R.converge(R.call, [R.nthArg(0), R.nthArg(2)])]
 ))
 
-const lastArgIsArray = R.compose(R.isArrayLike, R.nthArg(1))
+const lastArgIsArray = R.compose(R.is(Array), R.nthArg(1))
 
 const $like = R.compose(R.lte(0), R.invoker(1, "indexOf"))
 const $startsWith = R.compose(R.equals(0), R.invoker(1, "indexOf"))

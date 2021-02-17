@@ -87,8 +87,8 @@ const formatWithOperatorPair = R.compose(
   R.unnest,
   R.ifElse(
     R.path([1, regexKey]),
-    R.adjust(regexPair, 1),
-    R.adjust(singlePair, 1)
+    R.adjust(1, regexPair),
+    R.adjust(1, singlePair)
   )
 )
 
@@ -97,13 +97,13 @@ const headIsCompound = R.compose(isCompound, R.head)
 const headIsOperator = R.compose(isOperator, R.head)
 const headIsCompoundWithMultiple = R.allPass([
   headIsCompound,
-  R.compose(R.isArrayLike, R.last),
+  R.compose(R.is(Array), R.last),
   R.compose(R.gt(R.__, 1), R.length, R.last)
 ])
 
 const lastToPairs = R.compose(
   R.map(R.toPairs),
-  R.unless(R.isArrayLike, R.of),
+  R.unless(R.is(Array), R.of),
   R.last
 )
 const lastIsNaN = R.compose(R.equals(NaN), R.last)
@@ -155,7 +155,7 @@ function parsePair(pair) {
 
 function parseQuery(thing) {
   return R.cond([
-    [R.isArrayLike, R.map(parseQuery)],
+    [R.is(Array), R.map(parseQuery)],
     [R.is(Object), R.compose(R.map(parsePair), R.toPairs)]
   ])(thing)
 }
