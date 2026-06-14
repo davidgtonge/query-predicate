@@ -1,0 +1,7 @@
+{
+  "reporter": "spec",
+  "ui": "bdd",
+  "bail": true,
+  "require": ["coffee-script/register"],
+  "spec": ["test/**/*.test.js", "test/**/*.coffee"]
+}

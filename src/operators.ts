@@ -1,20 +1,24 @@
-const R = require("ramda")
+// @ts-nocheck
+import * as R from 'ramda'
 
-const equalsBy = R.curryN(3, R.converge(
-  R.identical,
-  [R.nthArg(1), R.converge(R.call, [R.nthArg(0), R.nthArg(2)])]
-))
+const equalsBy = R.curryN(
+  3,
+  R.converge(R.identical, [
+    R.nthArg(1),
+    R.converge(R.call, [R.nthArg(0), R.nthArg(2)]),
+  ])
+)
 
 const lastArgIsArray = R.compose(R.is(Array), R.nthArg(1))
 
-const $like = R.compose(R.lte(0), R.invoker(1, "indexOf"))
-const $startsWith = R.compose(R.equals(0), R.invoker(1, "indexOf"))
+const $like = R.compose(R.lte(0), R.invoker(1, 'indexOf'))
+const $startsWith = R.compose(R.equals(0), R.invoker(1, 'indexOf'))
 const $mod = R.converge(R.identical, [
   R.converge(R.modulo, [R.nthArg(1), R.compose(R.head, R.nthArg(0))]),
-  R.compose(R.last, R.nthArg(0))
+  R.compose(R.last, R.nthArg(0)),
 ])
 
-const operators = {
+export const operators: Record<string, (...args: unknown[]) => unknown> = {
   $equal: R.ifElse(lastArgIsArray, R.contains, R.identical),
   $deepEqual: R.equals,
   $contains: R.contains,
@@ -23,17 +27,15 @@ const operators = {
   $lte: R.flip(R.lte),
   $gt: R.flip(R.gt),
   $gte: R.flip(R.gte),
-  $between: R.uncurryN(2, R.compose(
-    R.allPass, R.zipWith(R.call, [R.lt, R.gt]))),
-  $betweene: R.uncurryN(2, R.compose(
-    R.allPass, R.zipWith(R.call, [R.lte, R.gte]))),
+  $between: R.uncurryN(2, R.compose(R.allPass, R.zipWith(R.call, [R.lt, R.gt]))),
+  $betweene: R.uncurryN(2, R.compose(R.allPass, R.zipWith(R.call, [R.lte, R.gte]))),
   $in: R.flip(R.contains),
   $nin: R.complement(R.flip(R.contains)),
   $all: R.converge(R.eqBy(R.length), [R.intersection, R.identity]),
   $any: R.compose(R.length, R.intersection),
   $size: equalsBy(R.length),
-  $exists:  equalsBy(R.complement(R.isNil)),
-  $has:  equalsBy(R.complement(R.isNil)),
+  $exists: equalsBy(R.complement(R.isNil)),
+  $has: equalsBy(R.complement(R.isNil)),
   $like,
   $likeI: R.useWith($like, [R.identity, R.toLower]),
   $type: R.type,
@@ -41,10 +43,10 @@ const operators = {
   $regexp: R.test,
   $startsWith,
   $endsWith: R.useWith($startsWith, [R.reverse, R.reverse]),
-  $mod
+  $mod,
 }
 
-const queryValueTypes = {
+export const queryValueTypes: Record<string, (value: unknown) => boolean> = {
   $in: R.is(Array),
   $nin: R.is(Array),
   $all: R.is(Array),
@@ -61,14 +63,12 @@ const queryValueTypes = {
   $lt: R.identity,
   $lte: R.identity,
   $gt: R.identity,
-  $gte: R.identity
+  $gte: R.identity,
 }
 
-const compoundOperators = {
+export const compoundOperators: Record<string, (...args: unknown[]) => unknown> = {
   $and: R.uncurryN(2, R.allPass),
   $or: R.uncurryN(2, R.anyPass),
   $not: R.complement(R.uncurryN(2, R.allPass)),
-  $nor: R.complement(R.uncurryN(2, R.anyPass))
+  $nor: R.complement(R.uncurryN(2, R.anyPass)),
 }
-
-module.exports = {operators, queryValueTypes, compoundOperators}

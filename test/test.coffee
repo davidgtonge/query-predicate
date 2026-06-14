@@ -2,7 +2,7 @@ require "coffee-script"
 
 assert = require "assert"
 R = require "ramda"
-createPredicate = require "../src/index"
+createPredicate = require("../dist/index.js").default
 
 query = (list, queryObj) ->
   predicate = createPredicate(queryObj)

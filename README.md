@@ -1,100 +1,171 @@
 Query-Predicate
 ================
 
-Re-write of underscore-query using ES6 and Ramda in an (extreme) point-free style.
+Re-write of [underscore-query](https://github.com/davidgtonge/underscore-query) using ES modules, TypeScript, and Ramda in an (extreme) point-free style.
 
-This module exports a single `createPredicate` function. This function takes
-a mongo-like query and returns a predicate function. This function can then be
-used with `R.filter` or `R.find`, etc.
+This module exports `createPredicate`, which takes a mongo-like query and returns a predicate function. Use it with `Array.prototype.filter`, Ramda's `R.filter`, `R.find`, and so on.
 
-The module parses a wide variety of mongo queries - please see the tests for
-examples.
+The module parses a wide variety of mongo queries — see the tests for examples. For operator behaviour, see the [underscore-query README](https://github.com/davidgtonge/underscore-query/blob/master/README.md).
 
-Documentation will be added shortly, but in the meantime check the Documentation
-for the query operators for [underscore-query](https://github.com/davidgtonge/underscore-query/blob/master/README.md)
+## Installation
 
-### Why Point Free
-
-This is an experiment in how much of a non-trivial program can be written in a
-point-free manner. I wrote it partly to explore the `ramda` api and partly
-as a challenge.
-
-Currently there are only 4 function declarations.
-
- - 3 are needed to allow recursion. While I probably could re-write the
- functions to use a y-combinator, I've not yet got round to it. The place that
- the recursion is used would make those particular functions a lot harder to
- reason about
- - 1 is needed to throw errors
-
-I think when used well by people who are familiar with functional apis (such as
-Ramda), the style is very expressive. At a simple level a procedural for loop
-could be used for `map` or `filter` or `reduce`. By using `map` rather than
-a for loop, the intent of my program is easier to understand.
-
-Here is an example of the journey from procedural to point free
-
-#### Simple Procedural
-```
-function fn(input) {
-  var output = []
-  for (i = 0; i < input.length; i++) {
-      output.push(input[i].key)
-  }
-  return output
-}
+```bash
+npm install query-predicate
 ```
 
-#### Using Native Map
-```
-function fn(input) {
-  return input.map(function(item) {
-      return item.key
-  })
-}
+The package is **ESM-only** (`"type": "module"`). Import it with:
+
+```ts
+import createPredicate from 'query-predicate'
 ```
 
-#### Using FP Style Map
-```
-function fn(input){
-  return map(function(item) {
-    return item.key
-  }, input)
-}
-```
+## Usage
 
-#### Making Point free - part 1 (i.e. no arguments)
-This works
-```
-var fn = R.map(function(item) {
-  return item.key
-})
-```
+```ts
+import createPredicate, { type QueryInput } from 'query-predicate'
 
-#### Making Point free - part 2 - Using R.prop
-```
-var fn = R.map(R.prop("key"))
-```
-
-#### Using R.pluck
-```
-var fn = R.pluck("key")
-```
-
-### Where doesn't it work
-
-Some functions become a lot more verbose and less clear. For example:
-```
-function $mod(value, attr){
-  return attr % value[0] === value[1]
+const query: QueryInput = {
+  status: 'active',
+  score: { $gte: 10 },
+  tags: { $elemMatch: { label: 'sale' } },
 }
 
-```
-becomes:
+const matches = createPredicate(query)
 
+const results = items.filter(matches)
 ```
-const $mod = R.converge(R.identical, [
-  R.converge(R.modulo, [R.nthArg(1), R.compose(R.head, R.nthArg(0))]),
-  R.compose(R.last, R.nthArg(0))
-])
+
+`createPredicate` also exposes sort/filter helpers:
+
+```ts
+import createPredicate from 'query-predicate'
+
+const { filterAndSort, filterNoSort } = createPredicate.sortFunctions
+
+const filtered = filterNoSort([{ status: 'active' }], collection)
 ```
+
+To inspect the parsed query AST without running it:
+
+```ts
+import { parseQuery, type ParsedNode } from 'query-predicate'
+
+const ast: ParsedNode[] = parseQuery({ foo: { $gt: 1 } })
+```
+
+## TypeScript migration (v2.1)
+
+From v2.1 the package is written in TypeScript and published as compiled ESM in `dist/`.
+
+| Before (v2.0) | After (v2.1) |
+|---|---|
+| CommonJS (`require`) | ESM (`import`) |
+| `src/*.js` shipped directly | `src/*.ts` compiled to `dist/` |
+| No type definitions | `.d.ts` via `package.json` `"types"` |
+| Default export only | Default export + named type/value exports |
+
+**Build locally**
+
+```bash
+npm run build   # tsc → dist/
+npm test        # build + mocha (107 tests)
+```
+
+**Typing strategy**
+
+- The **public API** (`index.ts`, `types.ts`, `memoize.ts`) is fully type-checked.
+- Internal Ramda-heavy modules (`parser`, `operators`, `run-query`, `sort`) use `// @ts-nocheck`. They are point-free pipelines that do not play nicely with strict Ramda typings; behaviour is covered by the existing test suite.
+
+If you are consuming the package, you only need the exported types below — you do not depend on those internal implementation details.
+
+## Exported types
+
+All types below are re-exported from the package entry point:
+
+```ts
+import type {
+  QueryInput,
+  Predicate,
+  // ...
+} from 'query-predicate'
+```
+
+### Query input types
+
+These describe what you can pass to `createPredicate` and `parseQuery`.
+
+| Type | Purpose |
+|---|---|
+| `QueryInput` | Top-level query: field map, compound query, swapped operator form, or array of queries |
+| `QueryObject` | Object keyed by field names and/or `$and` / `$or` / `$not` / `$nor` |
+| `FieldQuery` | Value for a single field: scalar, `RegExp`, function, or operator object |
+| `FieldOperatorQuery` | Operator conditions on one field, e.g. `{ $gt: 5, $lt: 10 }` |
+| `RegexFieldQuery` | Regex with options: `{ $regex: "pat", $options: "i" }` |
+| `SwappedOperatorQuery` | Operator-first form: `{ $equal: { status: "active" } }` |
+| `QueryScalar` | `string \| number \| boolean \| null \| undefined` |
+| `QueryOperator` | Union of all field operators (`$equal`, `$gt`, `$in`, `$elemMatch`, …) |
+| `CompoundOperator` | `$and` \| `$or` \| `$not` \| `$nor` |
+| `OperatorValueMap` | Maps each operator to its expected value shape (e.g. `$between: [min, max]`) |
+
+`QueryInput` examples:
+
+```ts
+// implicit $equal
+{ status: 'active' }
+
+// explicit operators
+{ score: { $gte: 10, $lt: 100 } }
+
+// compound
+{ $and: [{ a: 1 }, { b: 2 }] }
+
+// elemMatch
+{ items: { $elemMatch: { qty: { $gt: 0 } } } }
+
+// swapped operator
+{ $equal: { status: 'active' } }
+```
+
+### Runtime types
+
+| Type | Purpose |
+|---|---|
+| `Predicate<T>` | `(data: T) => boolean` — return type of `createPredicate` |
+| `ParsedNode` | Union of parsed AST node types |
+| `ParsedQuery` | Leaf node: `{ _type: 'query', key, op, val }` |
+| `ParsedCompound` | Compound node: `{ _type: 'compound', op, queries }` |
+| `ParsedElemMatch` | `$elemMatch` node: `{ _type: 'elemMatch', key, queries }` |
+
+### Exported values
+
+| Export | Description |
+|---|---|
+| `default` (`createPredicate`) | `(query: QueryInput) => Predicate` |
+| `parseQuery` | `(query: QueryInput) => ParsedNode[]` |
+| `createPredicate.sortFunctions` | `filterAndSort`, `filterNoSort`, `createSortMap`, etc. |
+
+Generic document typing:
+
+```ts
+interface Article {
+  title: string
+  score: number
+  tags: { label: string }[]
+}
+
+const query: QueryInput = { score: { $gte: 10 } }
+const matches = createPredicate<Article>(query)
+
+articles.filter(matches) // Article[]
+```
+
+## Why point free
+
+This is an experiment in how much of a non-trivial program can be written in a point-free manner — partly to explore the Ramda API, partly as a challenge.
+
+Currently there are only a few explicit function declarations:
+
+- 3 are needed to allow recursion (a y-combinator rewrite would make those harder to reason about)
+- 1 is needed to throw errors
+
+When used well, the style is expressive: `R.pluck("key")` states intent more clearly than a manual `for` loop. Some operators (e.g. `$mod`) become much more verbose in point-free form — see `src/operators.ts` for an example.

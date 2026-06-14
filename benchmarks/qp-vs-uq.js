@@ -1,7 +1,7 @@
 const {range, map, identity, applySpec, compose, filter} = require("ramda")
 const lodash = require("lodash")
 const uq = require("underscore-query")
-const createPredicate = require("../src/index")
+import createPredicate from '../dist/index.js'
 const benchmark = require("./benchmark")
 const query = uq(lodash, false)
 

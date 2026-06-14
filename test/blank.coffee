@@ -3,8 +3,8 @@ require "coffee-script"
 assert = require('assert')
 _ = require "underscore"
 R = require "ramda"
-runQuery = require("../src/run-query")
-parseQuery = require("../src/parser")
+runQuery = require("../dist/run-query.js").default
+parseQuery = require("../dist/parser.js").default
 
 _.query = (list, queryObj) ->
   query = parseQuery(queryObj)
